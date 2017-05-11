@@ -357,6 +357,116 @@ class BuilderTransformTest extends CompilableTestSupport {
         """
     }
 
+    void testExternalBuilderConstructorDefaultsOnGroovyClass() {
+        assertScript """
+            import groovy.transform.builder.*
+
+            class GroovyPerson {
+                String name
+                List<String> cars
+                Set<String> pets
+                Set<String> scope = Collections.emptySet()
+            }
+
+            @Builder(builderStrategy=ExternalStrategy, forClass=GroovyPerson)
+            class PersonBuilder {
+                PersonBuilder() {
+                    name('Joe')
+                    cars(['Porsche'])
+                    pets(['dog'] as Set)
+                    scope(['read'] as Set)
+                }
+            }
+
+            def person = new PersonBuilder().build()
+            assert person.name == "Joe"
+            assert person.cars == ['Porsche']
+            assert person.pets == ['dog'] as Set
+            assert person.scope == ['read'] as Set
+        """
+    }
+
+    void testExternalBuilderConstructorDefaultsOnGroovyClassWithPrivateFields() {
+        assertScript """
+            import groovy.transform.builder.*
+
+            class GroovyPerson {
+                private String name
+                private Set<String> pets
+                private Set<String> scope = Collections.emptySet()
+
+                String getName() {
+                    return name;
+                }
+
+                void setName(String name) {
+                    this.name = name
+                }
+
+                Set<String> getPets() {
+                    return pets;
+                }
+
+                void setPets(Collection<String> pets) {
+                    this.pets = pets == null ? Collections.emptySet()
+                        : new LinkedHashSet<String>(pets)
+                }
+
+                Set<String> getScope() {
+                    return scope;
+                }
+
+                void setScope(Collection<String> scope) {
+                    this.scope = scope == null ? Collections.emptySet()
+                        : new LinkedHashSet<String>(scope)
+                }
+            }
+
+            @Builder(builderStrategy=ExternalStrategy, forClass=GroovyPerson)
+            class PersonBuilder {
+                PersonBuilder() {
+                    name('Joe')
+                    pets(['dog'])
+                    scope(['read'])
+                }
+            }
+
+            PersonBuilder.declaredMethods.each {
+                println it
+            }
+
+            def person = new PersonBuilder().build()
+            assert person.name == "Joe"
+            assert person.pets == ['dog'] as Set
+            assert person.scope == ['read'] as Set
+        """
+    }
+
+    void testExternalBuilderConstructorDefaultsOneJavaClassWithCollectionSetter() {
+        assertScript """
+            import groovy.transform.builder.*
+            import org.codehaus.groovy.transform.JavaPerson
+
+            @Builder(builderStrategy=ExternalStrategy, forClass=JavaPerson)
+            class PersonBuilder {
+                PersonBuilder() {
+                    name('Joe')
+                    pets(['dog'])
+                    scope(['read'])
+                }
+            }
+            
+            PersonBuilder.declaredMethods.each {
+              println it
+            }
+
+            def person = new PersonBuilder().build()
+            assert person.name == "Joe"
+            assert person.pets == ['dog'] as Set
+            assert person.scope == ['read'] as Set
+        """
+    }
+
     void testExternalBuilderInvalidUseOfBuilderClassName() {
         def message = shouldNotCompile """
             import groovy.transform.builder.*
